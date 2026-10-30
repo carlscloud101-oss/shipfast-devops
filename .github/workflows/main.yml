@@ -1,0 +1,28 @@
+name: ShipFast CI/CD 
+ 
+on: 
+  push: 
+    branches: ["main"] 
+ 
+jobs: 
+  deploy: 
+    runs-on: ubuntu-latest 
+    steps: 
+      - name: Deploy to EC2 via SSH 
+        uses: appleboy/ssh-action@v1.0.0 
+        with: 
+          host: ${{ secrets.EC2_IP }} 
+          username: ${{ secrets.EC2_USER }} 
+          key: ${{ secrets.EC2_KEY }} 
+          script: | 
+            set -e 
+            if [ ! -d /var/www/shipfast/.git ]; then 
+              rm -rf /var/www/shipfast/* 
+              git clone https://github.com/${{ github.repository }} /var/www/shipfast 
+            fi 
+            cd /var/www/shipfast 
+            git pull origin main 
+            npm install 
+            pm2 restart shipfast || pm2 start app.js --name shipfast 
+            pm2 save 
+            sudo systemctl reload nginx 
